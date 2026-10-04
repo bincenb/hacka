@@ -96,4 +96,4 @@ python3 analysis/verify_facts.py   # should print 50/50 and rewrite FACTS.md
 - NOAA and CDC, [NWS HeatRisk](https://www.noaa.gov/news-release/noaa-expands-availability-of-new-heat-forecast-tool-ahead-of-summer)
 - National Weather Service [API](https://www.weather.gov/documentation/services-web-api) for the live forecast
 
-Tools: Python (pandas, NumPy, scikit-learn), HTML and JavaScript. We used Claude (Anthropic) as a coding and writing assistant.
+Tools: Python (pandas, NumPy, scikit-learn), HTML and JavaScript.

@@ -53,7 +53,7 @@ REFS = [
     "[3] NYC DOHMH Environment & Health Data Portal data (heat-syndrome ED visits; Heat Vulnerability Index). github.com/nychealth/EHDP-data, accessed Oct 3, 2026.",
     "[4] Mathes RW et al. PLoS One. 2017;12(9):e0184364. doi:10.1371/journal.pone.0184364  [5] Metzger KB, Ito K, Matte TD. Environ Health Perspect. 2010;118(1):80-86. doi:10.1289/ehp.0900906",
     "[6] Anderson GB, Bell ML. Environ Health Perspect. 2011;119(2):210-218. doi:10.1289/ehp.1002313  [7] NOAA/CDC. NWS HeatRisk (2024), noaa.gov  [8] CDC. About NSSP, cdc.gov/nssp",
-    "Live forecast: NWS API. Tools: Python (pandas, scikit-learn), JavaScript; Claude (Anthropic) AI for coding and drafting. Code and fact check (FACTS.md) included with the submission files.",
+    "Live forecast: NWS API. Tools: Python (pandas, scikit-learn), JavaScript. Code and fact check (FACTS.md) included with the submission files.",
 ]
 
 
