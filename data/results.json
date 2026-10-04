@@ -1,0 +1,237 @@
+{
+  "n_days": 1520,
+  "n_summers": 10,
+  "total_visits": 7619,
+  "high_burden_threshold_visits": 13,
+  "visits_on_days_without_nws_advisory": 0.556,
+  "nws_advisory": {
+    "alert_days": 118,
+    "high_burden_caught": 97,
+    "high_burden_total": 158,
+    "sensitivity": 0.614,
+    "precision": 0.822,
+    "share_of_visits_on_alert_days": 0.444,
+    "early_season_high_burden_caught": 12,
+    "early_season_high_burden_total": 29
+  },
+  "heatsignal_watch_or_advisory": {
+    "alert_days": 200,
+    "high_burden_caught": 131,
+    "high_burden_total": 158,
+    "sensitivity": 0.829,
+    "precision": 0.655,
+    "share_of_visits_on_alert_days": 0.577,
+    "early_season_high_burden_caught": 18,
+    "early_season_high_burden_total": 29
+  },
+  "heatsignal_watch_alone": {
+    "alert_days": 200,
+    "high_burden_caught": 131,
+    "high_burden_total": 158,
+    "sensitivity": 0.829,
+    "precision": 0.655,
+    "share_of_visits_on_alert_days": 0.577,
+    "early_season_high_burden_caught": 18,
+    "early_season_high_burden_total": 29
+  },
+  "heat_index_threshold_same_budget": {
+    "alert_days": 210,
+    "high_burden_caught": 129,
+    "high_burden_total": 158,
+    "sensitivity": 0.816,
+    "precision": 0.614,
+    "share_of_visits_on_alert_days": 0.575,
+    "early_season_high_burden_caught": 17,
+    "early_season_high_burden_total": 29
+  },
+  "spearman_pred_vs_observed": 0.753,
+  "mae_visits_per_day": 2.44,
+  "mean_visits_hi_91_97": {
+    "later in summer": 11.3,
+    "before 5th hot day": 15.3
+  },
+  "watch_or_advisory_sensitivity_with_2.5F_forecast_error": {
+    "mean": 0.823,
+    "min": 0.791,
+    "max": 0.854
+  },
+  "by_year": [
+    {
+      "year": 2017,
+      "visits": 530,
+      "high_burden_days": 9,
+      "nws_caught": 8,
+      "heatsignal_caught": 9,
+      "nws_days": 10,
+      "watch_days": 4
+    },
+    {
+      "year": 2018,
+      "visits": 858,
+      "high_burden_days": 20,
+      "nws_caught": 15,
+      "heatsignal_caught": 18,
+      "nws_days": 20,
+      "watch_days": 10
+    },
+    {
+      "year": 2019,
+      "visits": 830,
+      "high_burden_days": 15,
+      "nws_caught": 8,
+      "heatsignal_caught": 12,
+      "nws_days": 8,
+      "watch_days": 13
+    },
+    {
+      "year": 2020,
+      "visits": 479,
+      "high_burden_days": 9,
+      "nws_caught": 9,
+      "heatsignal_caught": 9,
+      "nws_days": 16,
+      "watch_days": 11
+    },
+    {
+      "year": 2021,
+      "visits": 665,
+      "high_burden_days": 17,
+      "nws_caught": 14,
+      "heatsignal_caught": 16,
+      "nws_days": 16,
+      "watch_days": 7
+    },
+    {
+      "year": 2022,
+      "visits": 740,
+      "high_burden_days": 19,
+      "nws_caught": 7,
+      "heatsignal_caught": 12,
+      "nws_days": 8,
+      "watch_days": 6
+    },
+    {
+      "year": 2023,
+      "visits": 504,
+      "high_burden_days": 8,
+      "nws_caught": 5,
+      "heatsignal_caught": 7,
+      "nws_days": 7,
+      "watch_days": 9
+    },
+    {
+      "year": 2024,
+      "visits": 784,
+      "high_burden_days": 19,
+      "nws_caught": 9,
+      "heatsignal_caught": 15,
+      "nws_days": 11,
+      "watch_days": 7
+    },
+    {
+      "year": 2025,
+      "visits": 1107,
+      "high_burden_days": 22,
+      "nws_caught": 9,
+      "heatsignal_caught": 15,
+      "nws_days": 9,
+      "watch_days": 8
+    },
+    {
+      "year": 2026,
+      "visits": 1122,
+      "high_burden_days": 20,
+      "nws_caught": 13,
+      "heatsignal_caught": 18,
+      "nws_days": 13,
+      "watch_days": 7
+    }
+  ],
+  "episodes": {
+    "n_episodes": 62,
+    "nws_warned_at_all": 41,
+    "nws_warned_from_day_one": 30,
+    "nws_visits_in_day_one_episodes": 1935,
+    "hs_warned_at_all": 53,
+    "hs_warned_from_day_one": 46,
+    "hs_visits_in_day_one_episodes": 2922,
+    "hs_earlier_than_nws": 25,
+    "total_episode_visits": 4350
+  },
+  "bootstrap_95ci_sensitivity": {
+    "nws": [
+      0.505,
+      0.743
+    ],
+    "heatsignal": [
+      0.754,
+      0.908
+    ],
+    "difference": [
+      0.158,
+      0.261
+    ]
+  },
+  "calibration": [
+    {
+      "predicted_range": "0-2",
+      "days": 767,
+      "mean_predicted": 1.1,
+      "mean_observed": 1.0
+    },
+    {
+      "predicted_range": "2-5",
+      "days": 370,
+      "mean_predicted": 3.1,
+      "mean_observed": 3.2
+    },
+    {
+      "predicted_range": "5-10",
+      "days": 197,
+      "mean_predicted": 6.9,
+      "mean_observed": 7.1
+    },
+    {
+      "predicted_range": "10-20",
+      "days": 110,
+      "mean_predicted": 14.3,
+      "mean_observed": 14.8
+    },
+    {
+      "predicted_range": "20-50",
+      "days": 65,
+      "mean_predicted": 27.9,
+      "mean_observed": 26.8
+    },
+    {
+      "predicted_range": "50-+",
+      "days": 11,
+      "mean_predicted": 84.6,
+      "mean_observed": 80.5
+    }
+  ],
+  "interval_ratios_80pct": [
+    {
+      "from": 0,
+      "to": 3,
+      "low": 0.0,
+      "high": 2.49,
+      "coverage_check": 0.9
+    },
+    {
+      "from": 3,
+      "to": 10,
+      "low": 0.23,
+      "high": 1.87,
+      "coverage_check": 0.8
+    },
+    {
+      "from": 10,
+      "to": null,
+      "low": 0.4,
+      "high": 1.62,
+      "coverage_check": 0.8
+    }
+  ],
+  "visits_on_warned_days_gain": 1009
+}

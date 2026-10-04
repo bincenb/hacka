@@ -1,0 +1,571 @@
+<title>HeatSignal NYC</title>
+<meta name="description" content="A health-based heat warning for New York City, tested on 10 summers of Health Department ER data.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,500..800&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: a field tool. Thesis band, then three working panels (plan, replay, place), then the evidence. */
+:root{
+  --bg:#f3f5f6; --surface:#ffffff; --ink:#15212b; --muted:#56636f; --line:#d9dfe4;
+  --accent:#b8321b;            /* heat red: brand + advisory */
+  --watch:#c27a00;             /* amber: new Heat Watch tier */
+  --calm:#56707f;              /* no alert */
+  --pill-ink:#ffffff;          /* text on alert pills */
+  --bar:#9fb0bc; --bar-hb:#3b4d5a; --pred:#b8321b;
+  --h1:#fbe9d6; --h2:#f6c99c; --h3:#ec9a5c; --h4:#d4622f; --h5:#a33015; --nodata:#e4e8eb;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1418; --surface:#172027; --ink:#e6ecf0; --muted:#9aa7b2; --line:#2a3640;
+  --accent:#ff7a5c; --watch:#f2a93b; --calm:#7f97a6; --bar:#4c5f6c; --bar-hb:#c3d0d9; --pred:#ff7a5c;
+  --h1:#3a2a20; --h2:#5e3620; --h3:#8c4422; --h4:#c45a2a; --h5:#f08a4b; --nodata:#222c34; --pill-ink:#0f1418; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1418; --surface:#172027; --ink:#e6ecf0; --muted:#9aa7b2; --line:#2a3640;
+  --accent:#ff7a5c; --watch:#f2a93b; --calm:#7f97a6; --bar:#4c5f6c; --bar-hb:#c3d0d9; --pred:#ff7a5c;
+  --h1:#3a2a20; --h2:#5e3620; --h3:#8c4422; --h4:#c45a2a; --h5:#f08a4b; --nodata:#222c34; --pill-ink:#0f1418; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1120px;margin:0 auto;padding-inline:clamp(16px,4vw,40px);padding-block:28px 64px;display:grid;gap:44px}
+h1,h2,h3{font-family:var(--display);text-wrap:balance;margin:0;line-height:1.08}
+h1{font-size:clamp(34px,6vw,60px);font-weight:800;font-stretch:72%;letter-spacing:-.01em}
+h2{font-size:clamp(24px,3.4vw,32px);font-weight:750;font-stretch:80%}
+h3{font-size:17px;font-weight:700;font-stretch:90%}
+p{margin:0;max-width:66ch}
+.eyebrow{font:500 12px/1.2 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.muted{color:var(--muted)}
+sup a{text-decoration:none;font:600 11px var(--mono);padding:0 1px}
+ol.src{margin:0;padding-left:22px;display:grid;gap:6px;font-size:13px;color:var(--muted)}
+ol.src li:target{color:var(--ink);background:var(--bg)}
+.range{font:500 12px var(--mono);color:var(--muted)}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+a{color:var(--accent)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* thesis */
+.thesis{display:grid;gap:18px;padding-top:8px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand svg{flex:none}
+.thesis .lede{font-size:clamp(17px,2.1vw,20px);max-width:58ch}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);margin-top:6px}
+.fact{background:var(--surface);padding:16px 18px;display:grid;gap:4px;align-content:start}
+.fact b{font:800 clamp(30px,4vw,40px)/1 var(--display);font-stretch:75%}
+.fact span{color:var(--muted);font-size:14px}
+
+section{display:grid;gap:18px}
+.head{display:grid;gap:8px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:clamp(14px,2.4vw,24px)}
+
+/* planner */
+.planner{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:24px}
+@media (max-width:820px){.planner{grid-template-columns:minmax(0,1fr)}}
+.inputs{display:grid;gap:14px;align-content:start}
+.field{display:grid;gap:4px}
+.field label{font-size:13px;font-weight:600}
+.field small{color:var(--muted);font-size:12px}
+.row{display:flex;gap:10px;align-items:center}
+.row input[type=range]{flex:1;accent-color:var(--accent)}
+.row output{min-width:4.2ch;text-align:right;font-family:var(--mono)}
+input[type=number],input[type=date]{font:inherit;font-family:var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);width:100%}
+.btns{display:flex;flex-wrap:wrap;gap:8px}
+button{font:600 13px/1 var(--body);padding:9px 12px;border-radius:4px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--ink)}
+button.primary{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+button[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.status{font-size:12px;color:var(--muted);min-height:1.2em}
+.days{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.days{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.day{border:1px solid var(--line);border-radius:6px;padding:12px;display:grid;gap:6px;border-top:5px solid var(--calm)}
+.day.watch{border-top-color:var(--watch)} .day.advisory{border-top-color:var(--accent)}
+.day .d{font:500 12px var(--mono);color:var(--muted)}
+.day .v{font:800 34px/1 var(--display);font-stretch:75%}
+.day .v small{font:500 12px var(--body);color:var(--muted);margin-left:4px}
+.pill{display:inline-block;font:600 12px/1 var(--body);letter-spacing:.04em;text-transform:uppercase;padding:5px 7px;border-radius:3px;color:var(--pill-ink);background:var(--calm);justify-self:start}
+.pill.watch{background:var(--watch);color:#1b1205}
+.skip{position:absolute;left:-999px;top:8px;background:var(--ink);color:var(--surface);padding:8px 12px;border-radius:4px;z-index:9}
+.skip:focus{left:16px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--ink);max-width:100%} .pill.advisory{background:var(--accent)}
+.today{border-style:dashed}
+.playbook{display:grid;gap:10px;margin-top:6px}
+.playbook ul{margin:0;padding-left:18px;display:grid;gap:6px}
+.playbook .who{font-weight:600}
+.callout{border-left:4px solid var(--calm);padding:10px 14px;background:var(--bg);border-radius:0 4px 4px 0}
+.callout.watch{border-left-color:var(--watch)} .callout.advisory{border-left-color:var(--accent)}
+
+/* replay */
+.yearbar{display:flex;flex-wrap:wrap;gap:6px}
+.yearbar button{font-family:var(--mono);font-weight:500;padding:7px 9px}
+.scroller{overflow-x:auto}
+#chart{display:block;min-width:680px;width:100%;height:auto}
+#chart text{fill:var(--muted);font:11px var(--mono)}
+#chart .lbl{fill:var(--ink);font:600 11px var(--body)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;border-radius:2px}
+.score{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}
+.score div{border:1px solid var(--line);border-radius:6px;padding:10px 12px;display:grid;gap:2px}
+.score b{font:800 26px/1.1 var(--display);font-stretch:78%}
+.tip{position:fixed;pointer-events:none;background:var(--ink);color:var(--surface);font:12px/1.4 var(--mono);padding:8px 10px;border-radius:4px;z-index:5;max-width:240px}
+
+/* map */
+.place{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:24px}
+@media (max-width:820px){.place{grid-template-columns:minmax(0,1fr)}}
+#map{width:100%;height:auto;display:block}
+#map path{stroke:var(--surface);stroke-width:.6;cursor:pointer}
+#map path:hover,#map path.sel{stroke:var(--ink);stroke-width:1.6}
+#map path.dim{opacity:.25}
+.ramp{display:flex;gap:2px;align-items:center;font-size:12px;color:var(--muted)}
+.ramp i{width:28px;height:10px;display:block}
+.hood{display:grid;gap:8px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;font-size:14px}
+.kv dt{color:var(--muted)} .kv dd{margin:0;font-family:var(--mono);text-align:right}
+ol.prio{margin:0;padding-left:22px;display:grid;gap:4px;font-size:14px}
+ol.prio button{all:unset;cursor:pointer;border-bottom:1px dotted var(--muted)}
+ol.prio button:focus-visible{outline:2px solid var(--accent)}
+
+/* evidence */
+.tablewrap{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{font:600 12px var(--body);color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+tr.us td{font-weight:600}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px}
+.cols > div{display:grid;gap:10px;align-content:start;min-width:0}
+.cols ul{margin:0;padding-left:18px;display:grid;gap:6px}
+footer{font-size:13px;color:var(--muted);display:grid;gap:6px;border-top:1px solid var(--line);padding-top:18px}
+@media (prefers-reduced-motion:no-preference){.day,.pill{transition:border-color .2s,background .2s}}
+</style>
+
+<a class="skip" href="#plan">Skip to the planner</a>
+<div class="wrap">
+  <header class="thesis">
+    <div class="brand">
+      <svg width="26" height="26" viewBox="0 0 26 26" aria-hidden="true"><rect x="10" y="2" width="6" height="15" rx="3" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="13" cy="19.5" r="4.5" fill="var(--accent)"/><path d="M19 6h4M19 10h3M19 14h4" stroke="var(--muted)" stroke-width="1.6"/></svg>
+      <span class="eyebrow">HeatSignal NYC · BioHack 2026 · Public Health &amp; Epidemiology</span>
+    </div>
+    <h1>Most heat ER visits in New York happen on days with no heat advisory.</h1>
+    <p class="lede">Heat is New York's deadliest weather hazard. About 500 New Yorkers die early from hot weather each summer, and Black New Yorkers die of heat stress at twice the rate of white New Yorkers.<sup><a href="#src1">1</a></sup> The city issues a heat advisory when the heat index reaches 100°F, or 95°F two days in a row.<sup><a href="#src2">2</a></sup> We checked that rule against ten summers of the Health Department's daily ER records for heat illness.<sup><a href="#src3">3</a></sup> HeatSignal adds a lower Heat Watch tier based on expected ER visits and sends low-cost help to the neighborhoods most likely to need it.</p>
+    <div class="facts" id="facts"></div>
+  </header>
+
+  <section id="plan" aria-labelledby="plan-h">
+    <div class="head">
+      <span class="eyebrow">1 · Plan the next three days</span>
+      <h2 id="plan-h">Turn a weather forecast into expected ER visits</h2>
+      <p class="muted">Enter the forecast maximum heat index at LaGuardia, or load the live National Weather Service forecast. The model runs in your browser.</p>
+    </div>
+    <div class="panel planner">
+      <form class="inputs" id="planForm" autocomplete="off">
+        <div class="field"><label for="issue">Warning issued on</label><input type="date" id="issue"></div>
+        <div class="field"><label for="hi0">Today's max heat index (°F)</label><div class="row"><input type="range" id="hi0" min="60" max="112" step="1"><output for="hi0" id="hi0o"></output></div></div>
+        <div class="field"><label for="hi1">Tomorrow, forecast (°F)</label><div class="row"><input type="range" id="hi1" min="60" max="112" step="1"><output for="hi1" id="hi1o"></output></div></div>
+        <div class="field"><label for="hi2">Day 2, forecast (°F)</label><div class="row"><input type="range" id="hi2" min="60" max="112" step="1"><output for="hi2" id="hi2o"></output></div></div>
+        <div class="field"><label for="hi3">Day 3, forecast (°F)</label><div class="row"><input type="range" id="hi3" min="60" max="112" step="1"><output for="hi3" id="hi3o"></output></div></div>
+        <div class="field"><label for="seen">Days at 90°F+ so far this summer</label><input type="number" id="seen" min="0" max="80"><small>Fewer than 5 means bodies have not adjusted to heat yet.</small></div>
+        <div class="field"><label for="run">Hot days in a row before today</label><input type="number" id="run" min="0" max="30"></div>
+        <div class="field"><label for="yday">Heat ER visits reported yesterday</label><input type="number" id="yday" min="0" max="400"><small>From the Health Department's syndromic surveillance feed.</small></div>
+        <div class="btns">
+          <button type="button" class="primary" id="liveBtn">Load NWS forecast</button>
+          <button type="button" id="exJuly">Example: July 2026 heat wave</button>
+          <button type="button" id="exJune">Example: June 2024</button>
+        </div>
+        <div class="status" id="status" role="status"></div>
+      </form>
+      <div style="display:grid;gap:16px;align-content:start;min-width:0">
+        <div class="days" id="days"></div>
+        <div class="callout" id="verdict"></div>
+        <div class="playbook" id="playbook"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="replay" aria-labelledby="replay-h">
+    <div class="head">
+      <span class="eyebrow">2 · Check it against real summers</span>
+      <h2 id="replay-h">Replay any summer from 2017 to 2026</h2>
+      <p class="muted">Bars are actual heat ER visits each day. The line is HeatSignal's forecast from a model that never saw that summer. Below the chart, compare the days each system would have issued a warning.</p>
+    </div>
+    <div class="panel" style="display:grid;gap:14px">
+      <div class="yearbar" id="years" role="group" aria-label="Summer"></div>
+      <div class="score" id="yscore"></div>
+      <div class="scroller"><svg id="chart" viewBox="0 0 900 300" role="img" aria-label="Daily heat ER visits with warnings"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--bar-hb)"></i>High-burden day (13+ visits)</span>
+        <span><i style="background:var(--bar)"></i>Other day</span>
+        <span><i style="background:var(--pred);height:3px"></i>HeatSignal forecast</span>
+        <span><i style="background:var(--accent)"></i>NWS heat advisory</span>
+        <span><i style="background:var(--watch)"></i>HeatSignal Heat Watch</span>
+      </div>
+    </div>
+  </section>
+
+  <section id="place" aria-labelledby="place-h">
+    <div class="head">
+      <span class="eyebrow">3 · Decide where help goes</span>
+      <h2 id="place-h">On Heat Watch days, act in the 81 most heat-vulnerable neighborhoods</h2>
+      <p class="muted">Colors show the Health Department's Heat Vulnerability Index (1 to 5) by neighborhood. It combines surface temperature, green space, home air conditioning, median income and the share of Black residents, who die of heat at higher rates.<sup><a href="#src4">4</a></sup> Heat Watch actions target index 4 and 5. Advisory actions cover the whole city.</p>
+    </div>
+    <div class="panel place">
+      <div style="display:grid;gap:10px;min-width:0">
+        <div class="btns" role="group" aria-label="Map view">
+          <button type="button" id="mAll" aria-pressed="true">All neighborhoods</button>
+          <button type="button" id="mWatch" aria-pressed="false">Heat Watch outreach zone</button>
+        </div>
+        <div class="field"><label for="hoodSel">Choose a neighborhood</label><select id="hoodSel"></select></div>
+        <svg id="map" role="img" aria-label="Map of New York City neighborhoods shaded by Heat Vulnerability Index. Use the list above or the call list to read each neighborhood's details."></svg>
+        <div class="ramp"><span style="margin-right:6px">Lower risk</span><i style="background:var(--h1)"></i><i style="background:var(--h2)"></i><i style="background:var(--h3)"></i><i style="background:var(--h4)"></i><i style="background:var(--h5)"></i><span style="margin-left:6px">Higher</span></div>
+      </div>
+      <div style="display:grid;gap:18px;align-content:start;min-width:0">
+        <div class="hood" id="hood" aria-live="polite"></div>
+        <div style="display:grid;gap:8px">
+          <h3>Call list for outreach teams</h3>
+          <p class="muted" style="font-size:13px">Highest-index neighborhoods, ordered by fewest homes with air conditioning, then most older adults living alone.</p>
+          <ol class="prio" id="prio"></ol>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="evidence" aria-labelledby="ev-h">
+    <div class="head">
+      <span class="eyebrow">4 · Evidence</span>
+      <h2 id="ev-h">Ten summers, tested one at a time</h2>
+      <p class="muted">Leave-one-summer-out cross-validation: each summer is scored by a model trained only on the other nine. A high-burden day is one in the top 10% of summer days (13 or more heat ER visits).</p>
+    </div>
+    <div class="panel tablewrap"><table id="evtable"></table></div>
+    <div class="cols">
+      <div>
+        <h3>Is the gain real?</h3>
+        <ul>
+          <li>Resampling whole summers 2,000 times, the advisory catches <span class="num" id="ciN"></span> of bad days and HeatSignal <span class="num" id="ciH"></span> (95% intervals). The gain is <span class="num" id="ciD"></span> percentage points.</li>
+          <li>Across <span class="num" id="epN"></span> heat-illness episodes (runs of bad days), a warning was in place from the first bad day in <span class="num" id="epA"></span> with the advisory and <span class="num" id="epH"></span> with HeatSignal.</li>
+          <li>About <span class="num" id="gain"></span> more heat ER visits fell on warned days over ten summers, roughly 100 a summer.</li>
+          <li>Forecasts are well calibrated. Days the model expected to be bad were about that bad:</li>
+        </ul>
+        <div class="tablewrap"><table id="caltable" style="min-width:0"></table></div>
+      </div>
+      <div>
+        <h3>What already exists, and what's new</h3>
+        <ul>
+          <li><b>NWS heat advisory.</b> A fixed heat-index rule (95°F two days, or 100°F).<sup><a href="#src2">2</a></sup> Its 95 to 100°F range matches a 2010 Health Department study of 1997 to 2006 deaths, which advised re-checking it with recent data.<sup><a href="#src9">9</a></sup> We did, and it is the baseline we test against.</li>
+          <li><b>NWS HeatRisk</b> (with CDC) rates heat 0 to 4 from local climate, time of year and duration.<sup><a href="#src5">5</a></sup> It is national. It is not tuned to New York's own ER visits, and it does not say where to send help.</li>
+          <li><b>Be a Buddy</b> pairs volunteers with at-risk neighbors in heat-vulnerable neighborhoods.<sup><a href="#src6">6</a></sup> HeatSignal tells programs like this which days to call, and gives them a ranked list of neighborhoods.</li>
+          <li><b>Sub-advisory triggers already exist.</b> Con Edison pauses residential shutoffs when the heat index is forecast to reach 90°F.<sup><a href="#src7">7</a></sup> A Heat Watch fits city practice.</li>
+          <li><b>What's new here:</b> a trigger set from the city's own heat-illness ER data, stated in expected patients and tested summer by summer, with action costs matched to how certain the warning is.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="cols">
+      <div>
+        <h3>How the model works</h3>
+        <ul>
+          <li>Daily heat ER visits come from syndromic surveillance, which covers every ER in the city. Heat ER visits track excess deaths in NYC.<sup><a href="#src3">3</a></sup><sup><a href="#src8">8</a></sup></li>
+          <li>Poisson regression of daily heat ER visits on the day's max heat index, with extra slope above 85, 90 and 95°F.</li>
+          <li>Also uses yesterday's heat, consecutive hot days, weekends, early-season heat (before the summer's 5th day at 90°F+), and ER visits two days earlier. That is the latest count the city has when it issues a warning a day ahead.</li>
+          <li>Heat Watch fires when expected visits reach the summer's top 13% of days, about 20 days a summer. Every advisory day is also a Watch day.</li>
+          <li>Forecast check: adding ±2.5°F of random forecast error to every day still catches <span class="num" id="noiseSens"></span> of high-burden days.</li>
+        </ul>
+      </div>
+      <div>
+        <h3>What it can't do yet</h3>
+        <ul>
+          <li>The ER counts are suspected heat illness from chief complaints and diagnosis codes. They miss people who never reach an ER, and heat deaths at home.</li>
+          <li>Weather comes from one station (LaGuardia). Street-level heat in the South Bronx can run hotter.</li>
+          <li>A plain lower heat-index threshold catches almost as many bad days (<span class="num" id="hiOnly"></span>). Most of the gain comes from warning at the temperatures where people actually get sick. The model adds expected visits, early-season adjustment and fewer false alarms.</li>
+          <li>We have citywide daily counts only. Neighborhood targeting uses the vulnerability index, not neighborhood ER forecasts.</li>
+          <li>It underestimates the worst multi-day early heat waves. On June 25, 2025, the fourth day of a heat wave that killed 19 people, it expected 31 ER visits. The real count was 141.<sup><a href="#src1">1</a></sup> Both systems were already warning that day, but the size of the surge was missed.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="sources" aria-labelledby="src-h">
+    <div class="head"><span class="eyebrow">5 · Sources</span><h2 id="src-h">Where every fact comes from</h2>
+      <p class="muted">Every number on this page is recomputed from the raw data by <span class="num">analysis/verify_facts.py</span>. The checked list is in FACTS.md in the project files.</p></div>
+    <ol class="src">
+      <li id="src1">NYC Department of Health and Mental Hygiene. 2026 Heat-Related Mortality Report (about 500 deaths a summer; Black New Yorkers' heat-stress death rate twice that of white New Yorkers; June 2025 heat wave, 19 heat-stress deaths). <a href="https://a816-dohbesp.nyc.gov/IndicatorPublic/data-features/heat-report/" target="_blank" rel="noopener">a816-dohbesp.nyc.gov</a></li>
+      <li id="src2">National Weather Service, New York NY. Heat Advisory criteria for New York City. <a href="https://www.weather.gov/okx/extremeheat" target="_blank" rel="noopener">weather.gov/okx/extremeheat</a></li>
+      <li id="src3">NYC DOHMH Environment &amp; Health Data Portal data: daily heat-related ED visits and max heat index at LaGuardia, May to September 2017 to 2026 (syndromic surveillance of all NYC EDs). <a href="https://github.com/nychealth/EHDP-data/tree/production/key-topics/heat-syndrome" target="_blank" rel="noopener">github.com/nychealth/EHDP-data</a></li>
+      <li id="src4">NYC DOHMH Heat Vulnerability Index, 2020 neighborhoods (NTA), and older adults living alone. <a href="https://github.com/nychealth/EHDP-data/tree/production/key-topics/heat-vulnerability-index" target="_blank" rel="noopener">github.com/nychealth/EHDP-data</a></li>
+      <li id="src5">NOAA and CDC. NWS HeatRisk forecast tool. <a href="https://www.noaa.gov/news-release/noaa-expands-availability-of-new-heat-forecast-tool-ahead-of-summer" target="_blank" rel="noopener">noaa.gov</a></li>
+      <li id="src6">Be a Buddy program, NYC Health Department and community partners. <a href="https://ny1.com/nyc/all-boroughs/weather/2022/03/25/be-a-buddy-and-help-your-neighbors-during-severe-weather" target="_blank" rel="noopener">NY1, March 25, 2022</a></li>
+      <li id="src7">Con Edison. Special Protections During Cold or Hot Weather. <a href="https://www.coned.com/en/accounts-billing/payment-plans-assistance/special-services/cold-heat-protections" target="_blank" rel="noopener">coned.com</a></li>
+      <li id="src8">Mathes RW, Ito K, Lane K, Matte TD. Real-time surveillance of heat-related morbidity: relation to excess mortality associated with extreme heat. PLoS One. 2017;12(9):e0184364. <a href="https://doi.org/10.1371/journal.pone.0184364" target="_blank" rel="noopener">doi:10.1371/journal.pone.0184364</a></li>
+      <li id="src9">Metzger KB, Ito K, Matte TD. Summer heat and mortality in New York City: how hot is too hot? Environ Health Perspect. 2010;118(1):80-86. <a href="https://doi.org/10.1289/ehp.0900906" target="_blank" rel="noopener">doi:10.1289/ehp.0900906</a></li>
+      <li id="src10">Anderson GB, Bell ML. Heat waves in the United States: mortality risk during heat waves and effect modification by heat wave characteristics in 43 U.S. communities. Environ Health Perspect. 2011;119(2):210-218. <a href="https://doi.org/10.1289/ehp.1002313" target="_blank" rel="noopener">doi:10.1289/ehp.1002313</a></li>
+      <li id="src11">National Weather Service API, hourly forecast for LaGuardia, and the NWS heat index (Rothfusz) equation. <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener">weather.gov/documentation</a></li>
+    </ol>
+  </section>
+
+  <footer>
+    <div>Data: NYC Department of Health and Mental Hygiene, Environment &amp; Health Data Portal (github.com/nychealth/EHDP-data): daily heat-related ED visits and max heat index at LaGuardia, May to September 2017 to 2026; Heat Vulnerability Index by 2020 NTA; older adults living alone, 2017 to 2021. Live forecast: National Weather Service API. Code, analysis and fact check (FACTS.md) are in the project files.</div>
+    <div>Recent counts are preliminary and may change. This is a hackathon prototype, not an official warning system.</div>
+  </footer>
+</div>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const A = /*ASSETS*/null;
+const $ = s => document.querySelector(s);
+const M = A.model, R = A.results;
+const pct = x => Math.round(x * 100) + "%";
+
+/* ---------- facts ---------- */
+(function facts(){
+  const nws = R.nws_advisory, hs = R.heatsignal_watch_or_advisory, y26 = R.by_year.find(y => y.year === 2026);
+  const f = [
+    [pct(R.visits_on_days_without_nws_advisory), `of ${R.total_visits.toLocaleString()} heat ER visits (2017 to 2026) happened on days with no heat advisory`],
+    [`${nws.high_burden_caught} → ${hs.high_burden_caught}`, `of ${nws.high_burden_total} high-burden days get a warning: advisory alone vs. with HeatSignal Watch`],
+    [`+${Math.round((R.mean_visits_hi_91_97["before 5th hot day"] / R.mean_visits_hi_91_97["later in summer"] - 1) * 100)}%`, `more heat ER visits at the same 91 to 97°F when it comes before the summer's 5th hot day. National studies find early heat waves about twice as deadly.<sup><a href="#src10">10</a></sup>`],
+    [`${R.episodes.nws_warned_from_day_one} → ${R.episodes.hs_warned_from_day_one}`, `of ${R.episodes.n_episodes} heat-illness episodes had a warning in place from the first bad day`],
+  ];
+  $("#facts").innerHTML = f.map(([b, s]) => `<div class="fact"><b class="num">${b}</b><span>${s}</span></div>`).join("");
+  $("#noiseSens").textContent = pct(R["watch_or_advisory_sensitivity_with_2.5F_forecast_error"].mean);
+  const h = R.heat_index_threshold_same_budget;
+  const ci = R.bootstrap_95ci_sensitivity, rng = a => `${Math.round(a[0] * 100)} to ${Math.round(a[1] * 100)}%`;
+  $("#ciN").textContent = rng(ci.nws); $("#ciH").textContent = rng(ci.heatsignal);
+  $("#ciD").textContent = `${Math.round(ci.difference[0] * 100)} to ${Math.round(ci.difference[1] * 100)}`;
+  $("#epN").textContent = R.episodes.n_episodes; $("#epA").textContent = R.episodes.nws_warned_from_day_one; $("#epH").textContent = R.episodes.hs_warned_from_day_one;
+  $("#gain").textContent = (Math.round(R.visits_on_warned_days_gain / 10) * 10).toLocaleString();
+  $("#caltable").innerHTML = `<thead><tr><th>Forecast range</th><th>Days</th><th>Mean forecast</th><th>Mean actual</th></tr></thead><tbody>` +
+    R.calibration.map(c => `<tr><td>${c.predicted_range.replace("-+", "+")} visits</td><td>${c.days}</td><td>${c.mean_predicted}</td><td>${c.mean_observed}</td></tr>`).join("") + "</tbody>";
+  $("#hiOnly").textContent = `${h.high_burden_caught} of ${h.high_burden_total} vs. ${hs.high_burden_caught}, with ${h.alert_days} alert days vs. ${hs.alert_days}`;
+})();
+
+/* ---------- model ---------- */
+let exampleYear = null; // historical examples use a model trained without that summer
+const activeModel = () => exampleYear && M.holdout[exampleYear] ? M.holdout[exampleYear] : M;
+function predict(x, mdl = activeModel()){
+  let z = mdl.intercept;
+  M.features.forEach((f, i) => { z += mdl.coef[i] * (x[f] - mdl.mu[i]) / mdl.sd[i]; });
+  return Math.exp(z);
+}
+function featuresFor(hi, hiLag, hotRun, prior, weekend, lag2){
+  const c = v => Math.max(0, v);
+  return { hi, hi_over_85: c(hi - 85), hi_over_90: c(hi - 90), hi_over_95: c(hi - 95),
+    lag1_over_85: c(hiLag - 85), hot_run: Math.min(hotRun, 5),
+    early_x_heat: (prior < 5 ? 1 : 0) * c(hi - 85), weekend: weekend ? 1 : 0,
+    log_visits_lag2: Math.log1p(Math.max(0, lag2)) };
+}
+function heatIndex(T, RH){ // NWS Rothfusz regression, °F
+  let hi = 0.5 * (T + 61 + (T - 68) * 1.2 + RH * 0.094);
+  if ((hi + T) / 2 < 80) return Math.max(T, hi);
+  hi = -42.379 + 2.04901523*T + 10.14333127*RH - .22475541*T*RH - .00683783*T*T - .05481717*RH*RH
+       + .00122874*T*T*RH + .00085282*T*RH*RH - .00000199*T*T*RH*RH;
+  if (RH < 13 && T >= 80 && T <= 112) hi -= ((13 - RH) / 4) * Math.sqrt((17 - Math.abs(T - 95)) / 17);
+  else if (RH > 85 && T >= 80 && T <= 87) hi += ((RH - 85) / 10) * ((87 - T) / 5);
+  return Math.max(T, hi);
+}
+
+/* ---------- playbook ---------- */
+const PLAY = {
+  none: { title: "No alert", lead: "Routine summer operations. Keep watching the forecast.", items: [] },
+  watch: { title: "Heat Watch (HeatSignal tier)", lead: "Low-cost, targeted actions in heat vulnerability index 4 and 5 neighborhoods. A false alarm costs some phone calls and texts.", items: [
+    ["Outreach teams", "Call and visit older adults living alone and people with heart, lung or kidney disease. Start with the call list below."],
+    ["Health Department", "Send heat-safety texts in English and Spanish to opted-in residents of index 4 and 5 neighborhoods. Remind them where cooling centers are and when they open."],
+    ["Senior centers, home-care agencies", "Check on clients the day before and the day of. Hand out fans and water, and confirm AC units work."],
+    ["Hospitals in the Bronx, Upper Manhattan, central Brooklyn", "Expect more heat ER visits. Stock cooling supplies and plan staffing."],
+    ["Camps, sports leagues, outdoor workers", "Move strenuous activity out of the 12 to 4 p.m. window and schedule water and shade breaks."],
+  ]},
+  advisory: { title: "Heat Advisory (existing NWS rule)", lead: "Everything in Heat Watch, plus the city's existing citywide heat emergency plan.", items: [
+    ["NYC Emergency Management", "Activate the Heat Emergency Plan and open cooling centers citywide, with longer hours in index 5 neighborhoods."],
+    ["Everyone", "Public alerts through Notify NYC, local media and 311."],
+  ]},
+};
+const RANK = { none: 0, watch: 1, advisory: 2 };
+const tierOf = (p, nws) => nws ? "advisory" : (p >= activeModel().watch_threshold ? "watch" : "none");
+function range80(p){ const r = M.interval_ratios.find(b => p >= b.from && (b.to === null || p < b.to)); return [p * r.low, p * r.high]; }
+const fmtN = v => v < 10 ? v.toFixed(1) : String(Math.round(v));
+
+/* ---------- planner ---------- */
+const ids = ["hi0", "hi1", "hi2", "hi3"];
+function setPlan(o){
+  $("#issue").value = o.issue; ids.forEach((k, i) => { $("#" + k).value = o.hi[i]; });
+  $("#seen").value = o.seen; $("#run").value = o.run; $("#yday").value = o.yday;
+  runPlan();
+}
+function nwsFlags(seq){ // seq includes today at index 0
+  return seq.map((v, i) => v >= 100 || (v >= 95 && ((seq[i - 1] ?? -1) >= 95 || (seq[i + 1] ?? -1) >= 95)));
+}
+function runPlan(){
+  ids.forEach(k => { $("#" + k + "o").textContent = $("#" + k).value + "°"; });
+  const issue = new Date($("#issue").value + "T12:00:00");
+  if (isNaN(issue)) return;
+  const hi = ids.map(k => +$("#" + k).value);
+  const seen = +$("#seen").value || 0, run0 = +$("#run").value || 0, yday = +$("#yday").value || 0;
+  const flags = nwsFlags(hi);
+  // walk forward from today
+  let run = run0, prior = seen;
+  const preds = [];
+  for (let k = 0; k < 4; k++){
+    run = hi[k] >= 90 ? run + 1 : 0;
+    const d = new Date(issue); d.setDate(d.getDate() + k);
+    const lag2 = k <= 1 ? yday : preds[k - 2];
+    const hiLag = k === 0 ? hi[0] : hi[k - 1];
+    const p = predict(featuresFor(hi[k], hiLag, run, prior, d.getDay() === 0 || d.getDay() === 6, lag2));
+    preds.push(p);
+    if (hi[k] >= 90) prior += 1;
+  }
+  const fmt = d => d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+  let worst = "none", first = null;
+  $("#days").innerHTML = preds.map((p, k) => {
+    const d = new Date(issue); d.setDate(d.getDate() + k);
+    const t = tierOf(p, flags[k]);
+    if (k > 0){
+      if (RANK[t] > RANK[worst]) worst = t;
+      if (t !== "none" && first === null) first = k;
+    }
+    const label = { none: "No alert", watch: "Heat Watch", advisory: "Advisory" }[t];
+    return `<div class="day ${t}${k === 0 ? " today" : ""}"><span class="d">${k === 0 ? "Today · " : ""}${fmt(d)}</span>
+      <span class="v num">${fmtN(p)}<small>ER visits expected</small></span>
+      <span class="range">80% range ${fmtN(range80(p)[0])} to ${fmtN(range80(p)[1])}</span>
+      <span class="muted num" style="font-size:13px">Heat index ${hi[k]}°F</span><span class="pill ${t}">${label}</span></div>`;
+  }).join("");
+  const early = seen < 5 && hi.slice(1).some(v => v >= 88);
+  const v = $("#verdict");
+  v.className = "callout " + worst;
+  if (worst === "none") v.innerHTML = `<b>No warning needed in the next three days.</b> Expected heat ER visits stay below the Watch trigger of ${activeModel().watch_threshold.toFixed(2)} a day.`;
+  else {
+    const lead = first === 1 ? "tomorrow" : `in ${first} days`;
+    const onlyWatch = worst === "watch";
+    v.innerHTML = `<b>${onlyWatch ? "Issue a Heat Watch" : "Heat Advisory conditions"} starting ${lead}.</b> ` +
+      (onlyWatch ? "The National Weather Service rule would not issue an advisory for these days, but our model expects enough heat illness to act on. " : "") +
+      (early ? "This is early-season heat. People have not adjusted yet, so the model expects more illness than the same temperature would cause in August." : "");
+  }
+  const pb = PLAY[worst];
+  const items = worst === "advisory" ? PLAY.watch.items.concat(pb.items) : pb.items;
+  $("#playbook").innerHTML = `<h3>${pb.title}</h3><p class="muted">${pb.lead}</p>` +
+    (items.length ? `<ul>${items.map(([w, t]) => `<li><span class="who">${w}.</span> ${t}</li>`).join("")}</ul>` : "");
+}
+ids.concat(["issue", "seen", "run", "yday"]).forEach(k => $("#" + k).addEventListener("input", runPlan));
+$("#planForm").addEventListener("submit", e => e.preventDefault());
+
+function exampleFrom(year, mmdd){ // build planner inputs from the real record
+  const h = A.history[year], i = h.dates.indexOf(mmdd);
+  let seen = 0, run = 0;
+  for (let j = 0; j < i; j++){ if (h.hi[j] >= 90) seen++; run = h.hi[j] >= 90 ? run + 1 : 0; }
+  return { issue: `${year}-${mmdd}`, hi: h.hi.slice(i, i + 4), seen, run, yday: h.visits[i - 1] };
+}
+$("#exJuly").onclick = () => { exampleYear = "2026"; setPlan(exampleFrom(2026, "06-29")); $("#status").textContent = "Real record, out-of-sample: a model trained without 2026, run on the forecast of Mon June 29, 2026. Actual heat ER visits on the next three days were 17, 47 and 104. The city activated its Heat Emergency Plan that day."; };
+$("#exJune").onclick = () => { exampleYear = "2024"; setPlan(exampleFrom(2024, "06-18")); $("#status").textContent = "Real record, out-of-sample: a model trained without 2024, run on June 18, 2024, before the summer\u2019s first hot day. Actual heat ER visits on the next three days were 14, 22 and 51. The advisory began June 21. HeatSignal\u2019s Watch began June 20, a day earlier."; };
+
+$("#liveBtn").onclick = async () => {
+  const st = $("#status");
+  st.textContent = "Loading the National Weather Service hourly forecast for LaGuardia…";
+  exampleYear = null;
+  try {
+    const pt = await (await fetch("https://api.weather.gov/points/40.7769,-73.874", { headers: { Accept: "application/geo+json" } })).json();
+    const fc = await (await fetch(pt.properties.forecastHourly, { headers: { Accept: "application/geo+json" } })).json();
+    const byDay = {};
+    for (const p of fc.properties.periods){
+      const day = p.startTime.slice(0, 10);
+      const T = p.temperatureUnit === "C" ? p.temperature * 9 / 5 + 32 : p.temperature;
+      const rh = p.relativeHumidity ? p.relativeHumidity.value : 50;
+      byDay[day] = Math.max(byDay[day] ?? -99, heatIndex(T, rh));
+    }
+    const days = Object.keys(byDay).sort().slice(0, 4);
+    const now = new Date(), month = now.getMonth() + 1;
+    setPlan({ issue: days[0], hi: days.map(d => Math.round(Math.min(112, Math.max(60, byDay[d])))),
+      seen: +$("#seen").value, run: +$("#run").value, yday: +$("#yday").value });
+    st.textContent = `Loaded NWS forecast for ${days[0]} to ${days[3]}.` + (month < 5 || month > 9 ? " The model was trained on May to September only, so treat off-season results as illustrative." : " Update the season counts and yesterday's ER visits from the Health Department feed.");
+  } catch (e) {
+    st.textContent = "Couldn't reach the NWS forecast from this page. Some hosts block outside requests. Open the GitHub Pages version, or type the forecast in.";
+  }
+};
+
+/* ---------- replay chart ---------- */
+const years = Object.keys(A.history).map(Number);
+let curYear = 2026;
+$("#years").innerHTML = years.map(y => `<button type="button" data-y="${y}" aria-pressed="${y === curYear}">${y}</button>`).join("");
+$("#years").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; curYear = +b.dataset.y;
+  document.querySelectorAll("#years button").forEach(x => x.setAttribute("aria-pressed", +x.dataset.y === curYear)); drawChart(); });
+
+const tip = $("#tip");
+function drawChart(){
+  const h = A.history[curYear], n = h.visits.length, hb = M.high_burden_threshold;
+  const W = 900, L = 66, Rr = 10, T = 14, CH = 200, stripY = CH + T + 14, stripH = 14;
+  const bw = (W - L - Rr) / n;
+  const maxV = Math.max(20, ...h.visits, ...h.pred);
+  const ticks = [0, 5, 13, 30, 60, 100, 150, 200].filter(t => t <= maxV * 1.05);
+  const y = v => T + CH - Math.sqrt(v / maxV) * CH;
+  let s = "";
+  ticks.forEach(t => { s += `<line x1="${L}" x2="${W - Rr}" y1="${y(t)}" y2="${y(t)}" stroke="var(--line)" stroke-width="${t === hb ? 1.4 : .8}" ${t === hb ? 'stroke-dasharray="4 3"' : ""}/>` +
+    `<text x="${L - 6}" y="${y(t) + 4}" text-anchor="end">${t}</text>`; });
+  h.visits.forEach((v, i) => { const x = L + i * bw; s += `<rect x="${x + .6}" y="${y(v)}" width="${Math.max(1, bw - 1.2)}" height="${T + CH - y(v)}" fill="${v >= hb ? "var(--bar-hb)" : "var(--bar)"}"/>`; });
+  s += `<polyline fill="none" stroke="var(--pred)" stroke-width="1.8" points="${h.pred.map((p, i) => `${(L + (i + .5) * bw).toFixed(1)},${y(p).toFixed(1)}`).join(" ")}"/>`;
+  [["NWS advisory", h.nws, "var(--accent)", stripY], ["HeatSignal", h.watch.map((w, i) => w || h.nws[i]), "var(--watch)", stripY + stripH + 8]].forEach(([lab, arr, col, yy]) => {
+    s += `<text class="lbl" x="${L - 6}" y="${yy + 11}" text-anchor="end">${lab === "HeatSignal" ? "Watch" : "Advisory"}</text>`;
+    s += `<rect x="${L}" y="${yy}" width="${W - L - Rr}" height="${stripH}" fill="var(--bg)"/>`;
+    arr.forEach((a, i) => { if (a) s += `<rect x="${L + i * bw}" y="${yy}" width="${bw}" height="${stripH}" fill="${col}"/>`; });
+  });
+  // missed high-burden days (no advisory) get a tick under the strips
+  const missY = stripY + 2 * stripH + 22;
+  h.visits.forEach((v, i) => { if (v >= hb && !h.nws[i]){ const cx = L + (i + .5) * bw; s += `<path d="M${cx - 3.5},${missY + 7} L${cx},${missY} L${cx + 3.5},${missY + 7}Z" fill="${h.watch[i] ? "var(--watch)" : "var(--muted)"}"/>`; } });
+  s += `<text x="${L}" y="${missY + 18}">▲ high-burden day with no advisory (amber = HeatSignal caught it)</text>`;
+  ["05-01", "06-01", "07-01", "08-01", "09-01"].forEach((md, k) => { const i = h.dates.indexOf(md); if (i >= 0) s += `<text x="${L + i * bw}" y="${T + CH + 11}">${["May", "Jun", "Jul", "Aug", "Sep"][k]}</text>`; });
+  s += `<text x="${L}" y="10">Heat ER visits per day (square-root scale; dashed line = 13, the high-burden cutoff)</text>`;
+  s += `<rect id="hit" x="${L}" y="0" width="${W - L - Rr}" height="${missY + 8}" fill="transparent"/>`;
+  const svg = $("#chart"); svg.setAttribute("viewBox", `0 0 ${W} ${missY + 24}`); svg.innerHTML = s;
+  const yrS = R.by_year.find(b => b.year === curYear);
+  svg.setAttribute("aria-label", `Summer ${curYear}: ${yrS.visits.toLocaleString()} heat ER visits over May to September, with a peak of ${Math.max(...h.visits)} in one day. ${yrS.high_burden_days} high-burden days. The advisory warned on ${yrS.nws_caught} of them and HeatSignal on ${yrS.heatsignal_caught}.`);
+  const hit = svg.querySelector("#hit");
+  hit.addEventListener("mousemove", e => {
+    const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const p = pt.matrixTransform(svg.getScreenCTM().inverse()); const i = Math.floor((p.x - L) / bw);
+    if (i < 0 || i >= n) { tip.hidden = true; return; }
+    const tier = h.nws[i] ? "Advisory" : h.watch[i] ? "Heat Watch" : "None";
+    tip.innerHTML = `${curYear}-${h.dates[i]}<br>Heat index ${h.hi[i]}°F<br>Actual visits ${h.visits[i]}<br>Forecast ${h.pred[i]}<br>Warning: ${tier}`;
+    tip.hidden = false; tip.style.left = Math.min(innerWidth - 200, e.clientX + 14) + "px"; tip.style.top = (e.clientY + 14) + "px";
+  });
+  hit.addEventListener("mouseleave", () => { tip.hidden = true; });
+  const yr = R.by_year.find(b => b.year === curYear);
+  $("#yscore").innerHTML = `<div><span class="eyebrow">Heat ER visits</span><b class="num">${yr.visits.toLocaleString()}</b></div>
+    <div><span class="eyebrow">High-burden days</span><b class="num">${yr.high_burden_days}</b></div>
+    <div><span class="eyebrow">Warned by advisory</span><b class="num">${yr.nws_caught} <span class="muted" style="font-size:15px">on ${yr.nws_days} alert days</span></b></div>
+    <div><span class="eyebrow">Warned with HeatSignal</span><b class="num" style="color:var(--watch)">${yr.heatsignal_caught} <span class="muted" style="font-size:15px">+${yr.watch_days} Watch days</span></b></div>`;
+}
+drawChart();
+
+/* ---------- map ---------- */
+const svgm = $("#map"), H = A.hoods;
+svgm.setAttribute("viewBox", `0 0 ${A.map.w} ${A.map.h}`);
+svgm.innerHTML = A.map.paths.map(p => { const h = H[p.geocode]; return `<path d="${p.d}" data-g="${p.geocode}" fill="${h ? `var(--h${h.hvi})` : "var(--nodata)"}"><title>${p.name}${h ? ` · index ${h.hvi}` : " · no residential data"}</title></path>`; }).join("");
+function showHood(g){
+  svgm.querySelectorAll("path.sel").forEach(p => p.classList.remove("sel"));
+  const el = svgm.querySelector(`path[data-g="${g}"]`); if (el) el.classList.add("sel");
+  const h = H[g]; if (!h) return;
+  const pick = $("#hoodSel"); if (pick && pick.value !== String(g)) pick.value = String(g);
+  const zone = h.hvi >= 4 ? `<span class="pill watch">Heat Watch outreach zone</span>` : `<span class="pill">Advisory days only</span>`;
+  $("#hood").innerHTML = `<span class="eyebrow">${h.cd}</span><h3 style="font-size:22px">${h.name}</h3>${zone}
+    <dl class="kv"><dt>Heat vulnerability index</dt><dd>${h.hvi} of 5</dd><dt>Homes with air conditioning</dt><dd>${h.ac}%</dd>
+    <dt>Summer surface temperature</dt><dd>${h.surf}°F</dd><dt>Green space</dt><dd>${h.green}%</dd>
+    <dt>Median household income</dt><dd>$${h.income.toLocaleString()}</dd><dt>Older adults who live alone</dt><dd>${h.alone ?? "n/a"}%</dd></dl>`;
+}
+svgm.addEventListener("click", e => { const p = e.target.closest("path"); if (p) showHood(p.dataset.g); });
+const prio = Object.entries(H).filter(([, h]) => h.hvi === 5).sort((a, b) => a[1].ac - b[1].ac || (b[1].alone ?? 0) - (a[1].alone ?? 0)).slice(0, 10);
+$("#prio").innerHTML = prio.map(([g, h]) => `<li><button type="button" data-g="${g}">${h.name}</button> <span class="muted num">${h.ac}% AC</span></li>`).join("");
+$("#prio").addEventListener("click", e => { const b = e.target.closest("button"); if (b) showHood(b.dataset.g); });
+const sel = $("#hoodSel");
+sel.innerHTML = Object.entries(H).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([g, h]) => `<option value="${g}">${h.name} (index ${h.hvi})</option>`).join("");
+sel.addEventListener("change", () => showHood(sel.value));
+showHood(prio[0][0]);
+function mapMode(watch){
+  $("#mAll").setAttribute("aria-pressed", !watch); $("#mWatch").setAttribute("aria-pressed", watch);
+  svgm.querySelectorAll("path").forEach(p => { const h = H[p.dataset.g]; p.classList.toggle("dim", watch && (!h || h.hvi < 4)); });
+}
+$("#mAll").onclick = () => mapMode(false); $("#mWatch").onclick = () => mapMode(true);
+
+/* ---------- evidence table ---------- */
+(function table(){
+  const rows = [["NWS heat advisory (current rule)", R.nws_advisory, ""], ["Lower heat-index threshold, same number of alert days", R.heat_index_threshold_same_budget, ""], ["HeatSignal: Watch + Advisory", R.heatsignal_watch_or_advisory, "us"]];
+  $("#evtable").innerHTML = `<thead><tr><th>Warning rule</th><th>Alert days</th><th>High-burden days warned</th><th>Precision</th><th>Share of heat ER visits on warned days</th><th>Early-season bad days warned</th></tr></thead><tbody>` +
+    rows.map(([n, r, c]) => `<tr class="${c}"><td>${n}</td><td>${r.alert_days}</td><td>${r.high_burden_caught} of ${r.high_burden_total} (${pct(r.sensitivity)})</td><td>${pct(r.precision)}</td><td>${pct(r.share_of_visits_on_alert_days)}</td><td>${r.early_season_high_burden_caught} of ${r.early_season_high_burden_total}</td></tr>`).join("") + "</tbody>";
+})();
+
+exampleYear = "2026";
+setPlan(exampleFrom(2026, "06-29"));
+$("#status").textContent = "Showing a real record, out-of-sample: a model trained without 2026, run on the forecast of Mon June 29, 2026. Actual heat ER visits on the next three days were 17, 47 and 104.";
+</script>
